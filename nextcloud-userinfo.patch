@@ -1,0 +1,175 @@
+diff -Nru apps/oauth2.bak/appinfo/routes.php apps/oauth2/appinfo/routes.php
+--- apps/oauth2.bak/appinfo/routes.php	2021-04-15 16:20:36.748000000 +0200
++++ apps/oauth2/appinfo/routes.php	2021-04-15 16:21:08.316000000 +0200
+@@ -44,6 +44,10 @@
+ 			'url' => '/api/v1/token',
+ 			'verb' => 'POST'
+ 		],
+-		['name' => 'OpenIdConnect#userinfo', 'url' => '/api/v1/userinfo', 'verb' => 'GET'],
++		[
++			'name' => 'OpenIdConnect#userinfo',
++			'url' => '/api/v1/userinfo',
++			'verb' => 'GET'
++		],
+ 	],
+ ];
+diff -Nru apps/oauth2.bak/composer/composer/autoload_classmap.php apps/oauth2/composer/composer/autoload_classmap.php
+--- apps/oauth2.bak/composer/composer/autoload_classmap.php	2021-04-12 14:16:36.412000000 +0200
++++ apps/oauth2/composer/composer/autoload_classmap.php	2021-04-16 15:06:11.164000000 +0200
+@@ -9,6 +9,7 @@
+     'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
+     'OCA\\OAuth2\\Controller\\LoginRedirectorController' => $baseDir . '/../lib/Controller/LoginRedirectorController.php',
+     'OCA\\OAuth2\\Controller\\OauthApiController' => $baseDir . '/../lib/Controller/OauthApiController.php',
++    'OCA\\OAuth2\\Controller\\OpenIdConnectController' => $baseDir . '/../lib/Controller/OpenIdConnectController.php',
+     'OCA\\OAuth2\\Controller\\SettingsController' => $baseDir . '/../lib/Controller/SettingsController.php',
+     'OCA\\OAuth2\\Db\\AccessToken' => $baseDir . '/../lib/Db/AccessToken.php',
+     'OCA\\OAuth2\\Db\\AccessTokenMapper' => $baseDir . '/../lib/Db/AccessTokenMapper.php',
+diff -Nru apps/oauth2.bak/composer/composer/autoload_static.php apps/oauth2/composer/composer/autoload_static.php
+--- apps/oauth2.bak/composer/composer/autoload_static.php	2021-04-12 14:16:36.412000000 +0200
++++ apps/oauth2/composer/composer/autoload_static.php	2021-04-16 15:06:40.192000000 +0200
+@@ -24,6 +24,7 @@
+         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+         'OCA\\OAuth2\\Controller\\LoginRedirectorController' => __DIR__ . '/..' . '/../lib/Controller/LoginRedirectorController.php',
+         'OCA\\OAuth2\\Controller\\OauthApiController' => __DIR__ . '/..' . '/../lib/Controller/OauthApiController.php',
++        'OCA\\OAuth2\\Controller\\OpenIdConnectController' => __DIR__ . '/..' . '/../lib/Controller/OpenIdConnectController.php',
+         'OCA\\OAuth2\\Controller\\SettingsController' => __DIR__ . '/..' . '/../lib/Controller/SettingsController.php',
+         'OCA\\OAuth2\\Db\\AccessToken' => __DIR__ . '/..' . '/../lib/Db/AccessToken.php',
+         'OCA\\OAuth2\\Db\\AccessTokenMapper' => __DIR__ . '/..' . '/../lib/Db/AccessTokenMapper.php',
+diff -Nru apps/oauth2.bak/lib/Controller/OauthApiController.php apps/oauth2/lib/Controller/OauthApiController.php
+--- apps/oauth2.bak/lib/Controller/OauthApiController.php	2021-04-12 14:16:36.416000000 +0200
++++ apps/oauth2/lib/Controller/OauthApiController.php	2021-04-16 10:22:12.736000000 +0200
+@@ -120,6 +120,12 @@
+ 			], Http::STATUS_BAD_REQUEST);
+ 		}
+ 
++        // trick for compatibility with some oauth clients - BeTa
++        if (($_SERVER['PHP_AUTH_USER'] === null || $_SERVER['PHP_AUTH_PW'] === null) && $_POST['client_id'] !== null && $_POST['client_secret'] !== null) {
++             $_SERVER['PHP_AUTH_USER'] = $_POST['client_id'];
++             $_SERVER['PHP_AUTH_PW'] = $_POST['client_secret'];
++        }
++
+ 		if (isset($this->request->server['PHP_AUTH_USER'])) {
+ 			$client_id = $this->request->server['PHP_AUTH_USER'];
+ 			$client_secret = $this->request->server['PHP_AUTH_PW'];
+diff -Nru apps/oauth2.bak/lib/Controller/OpenIdConnectController.php apps/oauth2/lib/Controller/OpenIdConnectController.php
+--- apps/oauth2.bak/lib/Controller/OpenIdConnectController.php	1970-01-01 01:00:00.000000000 +0100
++++ apps/oauth2/lib/Controller/OpenIdConnectController.php	2021-04-16 15:26:57.264000000 +0200
+@@ -0,0 +1,118 @@
++<?php
++/**
++ * @author Thomas Müller <thomas.mueller@tmit.eu>
++ * @copyright Copyright (c) 2018, ownCloud GmbH
++ * @license AGPL-3.0
++ *
++ * This code is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU Affero General Public License, version 3,
++ * as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ * GNU Affero General Public License for more details.
++ *
++ * You should have received a copy of the GNU Affero General Public License, version 3,
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>
++ */
++
++namespace OCA\OAuth2\Controller;
++
++use OCP\AppFramework\ApiController;
++use OCP\AppFramework\Http\JSONResponse;
++
++use OCP\IAvatarManager;
++use OCP\IRequest;
++use OCP\IURLGenerator;
++use OCP\IUser;
++use OCP\IUserSession;
++
++class OpenIdConnectController extends ApiController {
++
++    /** @var IURLGenerator */
++    private $urlGenerator;
++
++    /** @var IUserSession */
++    private $userSession;
++
++    /** @var IAvatarManager */
++    private $avatarManager;
++
++    /**
++     * OAuthApiController constructor.
++     *
++     * @param string $AppName The app's name.
++     * @param IRequest $request The request.
++     * @param IUserSession $userSession
++     * @param IURLGenerator $urlGenerator The URL generator.
++     * @param IAvatarManager $avatarManager
++     */
++    public function __construct($AppName, IRequest $request,
++                                IUserSession $userSession,
++                                IURLGenerator $urlGenerator,
++                                IAvatarManager $avatarManager) {
++        parent::__construct($AppName, $request);
++
++        $this->userSession = $userSession;
++        $this->urlGenerator = $urlGenerator;
++        $this->avatarManager = $avatarManager;
++    }
++
++    /**
++     * Implements OpenID Connect UserInfo endpoint
++     *
++     * @see https://connect2id.com/products/server/docs/api/userinfo
++     *
++     * @return JSONResponse The claims as JSON Object.
++     *
++     * @PublicPage
++     * @NoAdminRequired
++     * @NoCSRFRequired
++     * @CORS
++     * @throws \Exception
++     */
++    public function userInfo() {
++        error_log('userInfo()');
++        $user = $this->userSession->getUser();
++        if ($user === null) {
++            // should never happen
++            throw new \RuntimeException('Not logged in');
++        }
++
++        $data = [
++            'sub' => $user->getUID()
++        ];
++        $avatarUrl = $this->getAvatarUrl($user);
++        if ($avatarUrl !== null) {
++            $data['picture'] = $avatarUrl;
++        }
++        if ($user->getDisplayName() !== null) {
++            $data['name'] = $user->getDisplayName();
++        }
++        if ($user->getEMailAddress() !== null) {
++            $data['email'] = $user->getEMailAddress();
++        }
++        return new JSONResponse($data);
++    }
++
++    /**
++     * @param IUser $user
++     * @return string | null
++     * @throws \Exception
++     * @throws \OCP\Files\NotFoundException
++     */
++    public function getAvatarUrl($user) {
++        $avatar = $this->avatarManager->getAvatar($user->getUID());
++        if (!$avatar->exists()) {
++            return null;
++        }
++
++        $avatarUrl = $this->urlGenerator->linkTo('', 'remote.php');
++        $avatarUrl .= "/dav/avatars/{$user->getUID()}/96.jpeg";
++
++        $avatarUrl = $this->urlGenerator->getAbsoluteURL($avatarUrl);
++        return $avatarUrl;
++    }
++}
++
