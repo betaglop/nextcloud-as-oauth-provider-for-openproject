@@ -5,7 +5,6 @@ diff -Nru apps/oauth2.bak/appinfo/routes.php apps/oauth2/appinfo/routes.php
  			'url' => '/api/v1/token',
  			'verb' => 'POST'
  		],
--		['name' => 'OpenIdConnect#userinfo', 'url' => '/api/v1/userinfo', 'verb' => 'GET'],
 +		[
 +			'name' => 'OpenIdConnect#userinfo',
 +			'url' => '/api/v1/userinfo',
