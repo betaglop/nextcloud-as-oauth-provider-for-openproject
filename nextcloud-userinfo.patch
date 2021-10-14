@@ -158,3 +158,16 @@ diff -Nru apps/oauth2.bak/lib/Controller/OpenIdConnectController.php apps/oauth2
 +    }
 +}
 +
+--- apps/oauth2/appinfo/routes.php.bak	2021-10-14 15:59:13.317045961 +0200
++++ apps/oauth2/appinfo/routes.php	2021-10-14 16:02:15.919987647 +0200
+@@ -43,5 +43,10 @@
+ 			'url' => '/api/v1/token',
+ 			'verb' => 'POST'
+ 		],
++		[
++			'name' => 'OpenIdConnect#userinfo',
++			'url' => '/api/v1/userinfo',
++			'verb' => 'GET'
++		],
+ 	],
+ ];
