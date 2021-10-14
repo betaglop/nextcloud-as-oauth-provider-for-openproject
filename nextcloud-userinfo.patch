@@ -1,7 +1,7 @@
 diff -Nru apps/oauth2.bak/appinfo/routes.php apps/oauth2/appinfo/routes.php
 --- apps/oauth2.bak/appinfo/routes.php	2021-04-15 16:20:36.748000000 +0200
 +++ apps/oauth2/appinfo/routes.php	2021-04-15 16:21:08.316000000 +0200
-@@ -44,6 +44,10 @@
+@@ -44,6 +44,11 @@
  			'url' => '/api/v1/token',
  			'verb' => 'POST'
  		],
