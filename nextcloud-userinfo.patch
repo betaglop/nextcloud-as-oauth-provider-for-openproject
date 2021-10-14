@@ -1,17 +1,3 @@
-diff -Nru apps/oauth2.bak/appinfo/routes.php apps/oauth2/appinfo/routes.php
---- apps/oauth2.bak/appinfo/routes.php	2021-04-15 16:20:36.748000000 +0200
-+++ apps/oauth2/appinfo/routes.php	2021-04-15 16:21:08.316000000 +0200
-@@ -44,6 +44,11 @@
- 			'url' => '/api/v1/token',
- 			'verb' => 'POST'
- 		],
-+		[
-+			'name' => 'OpenIdConnect#userinfo',
-+			'url' => '/api/v1/userinfo',
-+			'verb' => 'GET'
-+		],
- 	],
- ];
 diff -Nru apps/oauth2.bak/composer/composer/autoload_classmap.php apps/oauth2/composer/composer/autoload_classmap.php
 --- apps/oauth2.bak/composer/composer/autoload_classmap.php	2021-04-12 14:16:36.412000000 +0200
 +++ apps/oauth2/composer/composer/autoload_classmap.php	2021-04-16 15:06:11.164000000 +0200
