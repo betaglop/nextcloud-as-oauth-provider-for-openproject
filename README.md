@@ -7,7 +7,8 @@ Make Nextcloud act as an OpenID Connect provider for OpenProject
 Backup your instance. From the NextCloud installation root directory run the following commands :
 
 ```
-$ wget https://raw.githubusercontent.com/betaglop/nextcloud-as-oauth-provider-for-openproject/main/nextcloud-userinfo.patch -O - | patch -p0
+$ wget -O - https://raw.githubusercontent.com/betaglop/nextcloud-as-oauth-provider-for-openproject/main/nextcloud-userinfo.patch \
+  | patch -p1
 ```
 
 ## Add a OAuth 2.0 Client in your NextCloud
