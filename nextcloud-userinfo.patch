@@ -359,18 +359,20 @@ diff -Nru nextcloud.bak/apps/oauth2/lib/Controller/OpenIdConnectController.php n
 +
 diff -Nru nextcloud.bak/index.php nextcloud/index.php 
 --- nextcloud.bak/index.php	2021-09-29 23:18:50.000000000 +0200
-+++ nextcloud/index.php	2021-10-14 19:48:00.996389280 +0200
-@@ -30,6 +30,15 @@
++++ nextcloud/index.php	2021-10-15 10:25:20.852454821 +0200
+@@ -30,6 +30,17 @@
   */
  require_once __DIR__ . '/lib/versioncheck.php';
  
 +// trick for compatibility with some oauth clients - BeTa
-+if (array_key_exists('PHP_AUTH_USER', $_SERVER) || array_key_exists('PHP_AUTH_PW', $_SERVER)) {
-+    $_POST['client_id'] = $_SERVER['PHP_AUTH_USER'];
-+    $_POST['client_secret'] = $_SERVER['PHP_AUTH_PW'];
-+    unset($_SERVER['PHP_AUTH_USER']);
-+    unset($_SERVER['PHP_AUTH_PW']);
-+    unset($_SERVER['HTTP_AUTHORIZATION']);
++if ( strpos($_SERVER['PHP_SELF'], '/apps/oauth2/') !== false ) {
++    if (array_key_exists('PHP_AUTH_USER', $_SERVER) || array_key_exists('PHP_AUTH_PW', $_SERVER)) {
++        $_POST['client_id'] = $_SERVER['PHP_AUTH_USER'];
++        $_POST['client_secret'] = $_SERVER['PHP_AUTH_PW'];
++        unset($_SERVER['PHP_AUTH_USER']);
++        unset($_SERVER['PHP_AUTH_PW']);
++        unset($_SERVER['HTTP_AUTHORIZATION']);
++    }
 +}
 +
  try {
